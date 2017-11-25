@@ -12,7 +12,7 @@ Add the following local manifest to your project, or include the `<remote>` and 
 <?xml version="1.0" encoding="UTF-8"?>
 <manifest>
   <remote name="zx2c4" fetch="https://git.zx2c4.com/" />
-  <project remote="zx2c4" name="android_kernel_wireguard" path="kernel/wireguard" />
+  <project remote="zx2c4" name="android_kernel_wireguard" path="kernel/wireguard" sync-s="true" />
 </manifest>
 ```
 
