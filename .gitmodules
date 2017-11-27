@@ -1,8 +1,0 @@
-[submodule "wireguard"]
-	path = wireguard
-	url = https://git.zx2c4.com/WireGuard
-	branch = master
-[submodule "libmnl"]
-	path = libmnl
-	url = git://git.netfilter.org/libmnl
-	branch = master
