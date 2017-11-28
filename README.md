@@ -1,7 +1,7 @@
-WireGuard for Android ROMs
+[WireGuard](https://www.wireguard.com/) for Android ROMs
 ==========================
 
-This is a repository meant to be included via a `local_manifest.xml`, so that [WireGuard](https://www.wireguard.com/) is built into the kernel and userland of an Android ROM. This is currently tested on Android 7 and kernels ≥3.10.
+This is a repository meant to be included via a `local_manifest.xml`, so that [WireGuard](https://www.wireguard.com/) is built into the kernel and userland of an Android ROM. This is currently tested on Android 7 and kernels ≥3.10. It may be used with [the WireGuard Android GUI app](https://play.google.com/apps/testing/com.wireguard.android).
 
 Usage
 -----
