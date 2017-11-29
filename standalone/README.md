@@ -1,20 +1,9 @@
 # Standalone WireGuard Tools for Android
 
-This currently contains a version of wg-quick.bash that works with
-Android 7's `ndc` command. It requires the WireGuard module to be
-part of your kernel, but after that, the usual `wg-quick up` and
-`wg-quick down` commands work normally.
+This compiles and creates a tarball which you can use to install the
+WireGuard tools into an existing ROM via root.
 
 ## Installation
 
-Build a `wg` binary for Android using the `build-wg.sh` script.
-Then copy this folder some place on your phone, and run `sh ./install.sh`
-as root. It should survive ROM flashes.
-
-## Usage
-
-Compared to the ordinary wg-quick, this one does not support SaveConfig
-and {Pre,Post}{Up,Down}.
-
-Put your configuration files into `/data/misc/wireguard/`. After that,
-the normal `wg-quick up|down` commands will work.
+Type `make`, copy the resulting `.tar.gz` to your device, and as root,
+run `sh ./install.sh`. The installation should survive ROM reflashes.

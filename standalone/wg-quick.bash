@@ -1,1 +1,0 @@
-../wg-quick.bash
