@@ -19,4 +19,4 @@ Add the following local manifest to your project, or include the `<remote>` and 
 Tools
 -----
 
-In addition to the kernel module, this repository also contains a version of [`wg-quick(8)`](https://git.zx2c4.com/WireGuard/about/src/tools/wg-quick.8) that works with Android 7's `ndc` command. Compared to the ordinary wg-quick, this one does not support `SaveConfig` and `{Pre,Post}{Up,Down}`. Put your configuration files into `/data/misc/wireguard/`. After that, the normal `wg-quick up|down` commands will work as usual.
+In addition to the kernel module, this repository also contains a version of [`wg-quick(8)`](https://git.zx2c4.com/WireGuard/about/src/tools/wg-quick.8) that works with Android 7's `ndc` command. Compared to the ordinary wg-quick, this one does not support `SaveConfig` and `{Pre,Post}{Up,Down}`. Put your configuration files into `/data/misc/wireguard/`. After that, the normal `wg-quick up|down` commands will work as usual. Users who only want the tools without having to use this inside a ROM may use the [standalone tool building/installing scripts](standalone/README.md).
