@@ -9,6 +9,7 @@ patch-wireguard: fetch
 	ln -vsfT "$$(realpath --relative-to="$(TARGET_KERNEL_SOURCE)/net)" "$(WIREGUARD_PATH)/wireguard/src" || readlink -f "$(WIREGUARD_PATH)/wireguard/src")" "$(TARGET_KERNEL_SOURCE)/net/wireguard"
 	grep -q wireguard "$(TARGET_KERNEL_SOURCE)/net/Makefile" || sed -i "/^obj-\\\$$(CONFIG_NETFILTER).*+=/a obj-\$$(CONFIG_WIREGUARD) += wireguard/" "$(TARGET_KERNEL_SOURCE)/net/Makefile"
 	grep -q wireguard "$(TARGET_KERNEL_SOURCE)/net/Kconfig" || sed -i "/^if INET\$$/a source \"net/wireguard/Kconfig\"" "$(TARGET_KERNEL_SOURCE)/net/Kconfig"
+	sed -i 's/tristate/bool/;s/default m/default y/;' "$(TARGET_KERNEL_SOURCE)/net/wireguard/Kconfig"
 else
 patch-wireguard:
 	@echo -e "\e[1;37;41m=================================================\e[0m" >&2
