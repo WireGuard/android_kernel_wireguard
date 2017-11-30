@@ -1,4 +1,4 @@
-ARCHS := arm64-v8a armeabi armeabi-v7a mips mips64 x86 x86_64
+ARCHS := $(shell ndk-build NDK_PROJECT_PATH=$(PWD)/wg-build APP_BUILD_SCRIPT=$(PWD)/../Android.mk APP_PLATFORM=21 DUMP_NDK_KNOWN_DEVICE_ABIS 2>/dev/null)
 
 all: $(foreach ARCH,$(ARCHS),wg-tools-$(ARCH).tar.gz)
 
@@ -8,7 +8,7 @@ clean:
 wg:
 	rm -rf wg-build
 	mkdir -p wg-build
-	ndk-build NDK_PROJECT_PATH=$(PWD)/wg-build APP_BUILD_SCRIPT=$(PWD)/../Android.mk APP_PLATFORM=24
+	ndk-build NDK_PROJECT_PATH=$(PWD)/wg-build APP_BUILD_SCRIPT=$(PWD)/../Android.mk APP_PLATFORM=21
 
 define arch_rule
 wg-build/libs/$(1)/wg: wg
