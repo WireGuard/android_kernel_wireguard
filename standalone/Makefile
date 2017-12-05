@@ -1,24 +1,36 @@
-ARCHS := $(shell ndk-build NDK_PROJECT_PATH=$(PWD)/wg-build APP_BUILD_SCRIPT=$(PWD)/../Android.mk APP_PLATFORM=21 DUMP_NDK_KNOWN_DEVICE_ABIS 2>/dev/null)
+# SPDX-License-Identifier: GPL-2.0
+#
+# Copyright (C) 2015-2017 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved.
 
-all: $(foreach ARCH,$(ARCHS),wg-tools-$(ARCH).tar.gz)
+ARCHS := $(shell ndk-build NDK_PROJECT_PATH=$(PWD)/build APP_BUILD_SCRIPT=$(PWD)/../Android.mk APP_PLATFORM=21 DUMP_NDK_KNOWN_DEVICE_ABIS 2>/dev/null)
+
+all: wireguard-tools.zip
 
 clean:
-	rm -rf wg-build $(foreach ARCH,$(ARCHS),wg-tools-$(ARCH).tar.gz)
+	rm -rf build wireguard-tools.zip
 
-wg:
-	rm -rf wg-build
-	mkdir -p wg-build
-	ndk-build NDK_PROJECT_PATH=$(PWD)/wg-build APP_BUILD_SCRIPT=$(PWD)/../Android.mk APP_PLATFORM=21
+wg-build:
+	ndk-build NDK_PROJECT_PATH=$(PWD)/build APP_BUILD_SCRIPT=$(PWD)/../Android.mk APP_PLATFORM=21
 
-define arch_rule
-wg-build/libs/$(1)/wg: wg
-wg-tools-$(1).tar.gz: wg-build/libs/$(1)/wg install.sh ../wg-quick.bash addonsd.sh
-	rm -f $$@
-	mkdir -p wg-build/libs/$(1)/wg-tools
-	ln -frst wg-build/libs/$(1)/wg-tools/ $$^
-	tar -chzf $$@ -C wg-build/libs/$(1) wg-tools
-endef
-$(foreach ARCH,$(ARCHS),$(eval $(call arch_rule,$(ARCH))))
+bash-build:
+	ndk-build NDK_PROJECT_PATH=$(PWD)/build APP_BUILD_SCRIPT=$(PWD)/bash/Android.mk APP_PLATFORM=21 IN_THE_RIGHT_PLACE=yes-yes-i-am
+
+$(foreach ARCH,$(ARCHS),build/libs/$(ARCH)/wg): wg-build
+$(foreach ARCH,$(ARCHS),build/libs/$(ARCH)/libncurses.so build/libs/$(ARCH)/bash): bash-build
+
+wireguard-tools.zip: $(foreach ARCH,$(ARCHS),build/libs/$(ARCH)/libncurses.so build/libs/$(ARCH)/bash build/libs/$(ARCH)/wg) installer.sh ../wg-quick.bash addonsd.sh
+	rm -rf $@ build/zip build/*.zip
+	mkdir -p build/zip build/zip/addon.d build/zip/scripts build/zip/META-INF/com/google/android
+	ln -frs build/libs build/zip/arch
+	ln -frs ../wg-quick.bash build/zip/scripts/wg-quick
+	ln -frs addonsd.sh build/zip/addon.d/40-wireguard.sh
+	ln -frs installer.sh build/zip/META-INF/com/google/android/update-binary
+	touch build/zip/META-INF/com/google/android/updater-script
+	cd build/zip && zip -0Xr ../unaligned-$@ .
+	openssl req -x509 -nodes -newkey rsa:2048 -keyout build/key.pem -out build/cert.pem -days 3650 -subj /CN=$$(hostname)/
+	openssl pkcs8 -topk8 -inform PEM -outform DER -in build/key.pem -out build/key.pk8 -nocrypt
+	$(ANDROID_HOME)/build-tools/27.0.1/zipalign -v -p 4 build/unaligned-$@ build/aligned-$@
+	$(ANDROID_HOME)/build-tools/27.0.1/apksigner sign --key build/key.pk8 --cert build/cert.pem --min-sdk-version 21 --out $@ build/aligned-$@
 
 .PHONY: clean all
 .SECONDARY:

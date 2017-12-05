@@ -1,4 +1,8 @@
 #!/bin/bash
+# SPDX-License-Identifier: GPL-2.0
+#
+# Copyright (C) 2015-2017 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved.
+
 set -e
 WIREGUARD_VERSION=79944b183795bb69e12d612bd802b54599b9eb99
 LIBMNL_VERSION=1.0.4
