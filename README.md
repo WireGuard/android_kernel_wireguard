@@ -18,7 +18,7 @@ To use, add the following local manifest to your project, or include the `<remot
 
 After that calls to `repo sync` and `mka bacon` will do the right thing, giving you a WireGuard-enabled ROM.
 
-## Standalone Kernel Module
+## Standalone Kernel Built-in Module
 
 If you do not wish to run a custom ROM, but would still like to build a kernel with WireGuard, you may patch WireGuard into your kernel using the following script:
 
