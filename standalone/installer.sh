@@ -55,22 +55,11 @@ rm -rf /tmp/wireguard
 mkdir -p /tmp/wireguard
 print "Extracting files"
 unzip -d /tmp/wireguard "$ZIP"
-[ -f /tmp/wireguard/arch/$ARCH/wg ] || die "Not available for device's ABI"
-print "Copying WireGuard tools"
-cp /tmp/wireguard/scripts/wg-quick /tmp/wireguard/arch/$(getprop ro.product.cpu.abi)/wg /system/xbin/
+[ -d /tmp/wireguard/arch/$ARCH ] || die "Not available for device's ABI"
+print "Installing WireGuard tools"
+cp /tmp/wireguard/arch/$(getprop ro.product.cpu.abi)/* /system/xbin/
 cp /tmp/wireguard/addon.d/40-wireguard.sh /system/addon.d/
 chmod 755 /system/xbin/wg /system/xbin/wg-quick /system/addon.d/40-wireguard.sh
-
-if [ ! -f /system/xbin/bash ]; then
-	print "Installing bash"
-	cp /tmp/wireguard/arch/$ARCH/bash /system/xbin/
-	chmod 755 /system/xbin/bash
-	if [ -d /system/lib64 -a ! -f /system/lib64/libncurses.so ]; then
-		cp /tmp/wireguard/arch/$ARCH/libncurses.so /system/lib64/
-	elif [ ! -d /system/lib64 -a ! -f /system/lib/libncurses.so ]; then
-		cp /tmp/wireguard/arch/$ARCH/libncurses.so /system/lib/
-	fi
-fi
 
 mkdir -pm 700 /data/misc/wireguard
 print "Success! Be sure your kernel has the WireGuard module enabled."

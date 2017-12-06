@@ -43,10 +43,10 @@ ALL_DEFAULT_INSTALLED_MODULES += wg
 include $(BUILD_EXECUTABLE)
 
 include $(CLEAR_VARS)
+LOCAL_SRC_FILES := wg-quick.c
+LOCAL_CFLAGS := -O3 -std=gnu11 -Wall -pedantic -Wno-missing-field-initializers -Wno-sign-compare
 LOCAL_MODULE := wg-quick
 LOCAL_MODULE_PATH := $(TARGET_OUT_OPTIONAL_EXECUTABLES)
-LOCAL_SRC_FILES := wg-quick.bash
-LOCAL_REQUIRED_MODULES := bash wg
 LOCAL_MODULE_CLASS := EXECUTABLES
 ALL_DEFAULT_INSTALLED_MODULES += wg-quick
-include $(BUILD_PREBUILT)
+include $(BUILD_EXECUTABLE)

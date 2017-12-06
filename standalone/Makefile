@@ -9,20 +9,15 @@ all: wireguard-tools.zip
 clean:
 	rm -rf build wireguard-tools.zip
 
-wg-build:
+wg-build: ../wg-quick.c
 	ndk-build NDK_PROJECT_PATH=$(PWD)/build APP_BUILD_SCRIPT=$(PWD)/../Android.mk APP_PLATFORM=21
 
-bash-build:
-	ndk-build NDK_PROJECT_PATH=$(PWD)/build APP_BUILD_SCRIPT=$(PWD)/bash/Android.mk APP_PLATFORM=21 IN_THE_RIGHT_PLACE=yes-yes-i-am
+$(foreach ARCH,$(ARCHS),build/libs/$(ARCH)/wg build/libs/$(ARCH)/wg-quick): wg-build
 
-$(foreach ARCH,$(ARCHS),build/libs/$(ARCH)/wg): wg-build
-$(foreach ARCH,$(ARCHS),build/libs/$(ARCH)/libncurses.so build/libs/$(ARCH)/bash): bash-build
-
-wireguard-tools.zip: $(foreach ARCH,$(ARCHS),build/libs/$(ARCH)/libncurses.so build/libs/$(ARCH)/bash build/libs/$(ARCH)/wg) installer.sh ../wg-quick.bash addonsd.sh
+wireguard-tools.zip: $(foreach ARCH,$(ARCHS),build/libs/$(ARCH)/wg-quick build/libs/$(ARCH)/wg) installer.sh addonsd.sh
 	rm -rf $@ build/zip build/*.zip
-	mkdir -p build/zip build/zip/addon.d build/zip/scripts build/zip/META-INF/com/google/android
+	mkdir -p build/zip build/zip/addon.d build/zip/META-INF/com/google/android
 	ln -frs build/libs build/zip/arch
-	ln -frs ../wg-quick.bash build/zip/scripts/wg-quick
 	ln -frs addonsd.sh build/zip/addon.d/40-wireguard.sh
 	ln -frs installer.sh build/zip/META-INF/com/google/android/update-binary
 	touch build/zip/META-INF/com/google/android/updater-script
