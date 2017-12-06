@@ -1,12 +1,12 @@
-[WireGuard](https://www.wireguard.com/) for Android ROMs
-==========================
+# [WireGuard](https://www.wireguard.com/) for Android ROMs and Kernels
 
-This is a repository meant to be included via a `local_manifest.xml`, so that [WireGuard](https://www.wireguard.com/) is built into the kernel and userland of an Android ROM. This is currently tested on Android 7 and kernels ≥3.10. It may be used with [the WireGuard Android GUI app](https://play.google.com/apps/testing/com.wireguard.android).
+This repository contains various ways of integrating [WireGuard](https://www.wireguard.com/) into Android systems. The result may be used with [the WireGuard Android GUI app](https://play.google.com/apps/testing/com.wireguard.android). This is currently tested on Android 7 and kernels ≥3.10.
 
-Usage
------
+## Integrating into ROMs Directly
 
-Add the following local manifest to your project, or include the `<remote>` and `<project>` lines in an existing manifest:
+This is the preferred approach. It is embedded into your ROM via a simple `local_manifest.xml`, so that WireGuard is built into the kernel and userland of an Android ROM.
+
+To use, add the following local manifest to your project, or include the `<remote>` and `<project>` lines in an existing manifest:
 
 ```
 <?xml version="1.0" encoding="UTF-8"?>
@@ -16,7 +16,29 @@ Add the following local manifest to your project, or include the `<remote>` and 
 </manifest>
 ```
 
-Tools
------
+After that calls to `repo sync` and `mka bacon` will do the right thing, giving you a WireGuard-enabled ROM.
 
-In addition to the kernel module, this repository also contains a version of [`wg-quick(8)`](https://git.zx2c4.com/WireGuard/about/src/tools/wg-quick.8) that works with Android 7's `ndc` command. Compared to the ordinary wg-quick, this one does not support `SaveConfig` and `{Pre,Post}{Up,Down}`. Put your configuration files into `/data/misc/wireguard/`. After that, the normal `wg-quick up|down` commands will work as usual. Users who only want the tools without having to use this inside a ROM may use the [standalone tool building/installing scripts](standalone/README.md).
+## Standalone Kernel Module
+
+If you do not wish to run a custom ROM, but would still like to build a kernel with WireGuard, you may patch WireGuard into your kernel using the following script:
+
+```
+$ cd standalone-kernel
+$ ./patch-kernel.sh path/to/kernel
+```
+
+After this, WireGuard will be included as part of the ordinary kernel build.
+
+## Standalone Tools
+
+If your kernel already has WireGuard, perhaps via a standalone kernel module, but you need the tools for userland, you may build a flashable zip file, installable via recovery, with:
+
+```
+$ cd standalone-tools
+$ make -j$(nproc)
+$ adb sideload wireguard-tools.zip
+```
+
+## `wg-quick(8)` for Android
+
+All of the above approaches include [`wg-quick(8)`](https://git.zx2c4.com/WireGuard/about/src/tools/wg-quick.8) for Android, which works via calls to Android's `ndc` command. Compared to the ordinary wg-quick, this one does not support `SaveConfig` and `{Pre,Post}{Up,Down}`. Put your configuration files into `/data/misc/wireguard/`. After that, the normal `wg-quick up|down` commands will work as usual. This is used automatically via the [the WireGuard Android GUI app](https://play.google.com/apps/testing/com.wireguard.android).
