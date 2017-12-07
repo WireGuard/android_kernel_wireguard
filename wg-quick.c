@@ -6,6 +6,7 @@
  * a shell script, calling out to external executables such as ip(8).
  */
 
+#define _GNU_SOURCE
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
@@ -47,15 +48,10 @@ static void *xstrdup(const char *str)
 
 static void xregcomp(regex_t *preg, const char *regex, int cflags)
 {
-	char error[4096];
-	int ret;
-
-	ret = regcomp(preg, regex, cflags);
-	if (!ret)
-		return;
-	regerror(ret, preg, error, sizeof(error));
-	fprintf(stderr, "Error: Regex compilation error: %s\n", error);
-	exit(88);
+	if (regcomp(preg, regex, cflags)) {
+		fprintf(stderr, "Error: Regex compilation error\n");
+		exit(EBADR);
+	}
 }
 
 static char *concat(char *first, ...)
@@ -70,13 +66,25 @@ static char *concat(char *first, ...)
 	va_end(args);
 
 	ret = xmalloc(len + 1);
-	ret[0] = 0;
+	ret[0] = '\0';
 
 	va_start(args, first);
 	for (char *i = first; i; i = va_arg(args, char *))
 		strcat(ret, i);
 	va_end(args);
 
+	return ret;
+}
+
+static char *concat_and_free(char *orig, const char *delim, const char *new_line)
+{
+	char *ret;
+
+	if (!orig)
+		ret = xstrdup(new_line);
+	else
+		ret = concat(orig, delim, new_line, NULL);
+	free(orig);
 	return ret;
 }
 
@@ -111,7 +119,7 @@ static void fclosep(FILE **f)
 
 static char *vcmd_ret(struct command_buffer *c, const char *cmd_fmt, va_list args)
 {
-	char cmd[8192];
+	_cleanup_free_ char *cmd = NULL;
 
 	if (!c->stream && !cmd_fmt)
 		return NULL;
@@ -119,9 +127,8 @@ static char *vcmd_ret(struct command_buffer *c, const char *cmd_fmt, va_list arg
 		pclose(c->stream);
 
 	if (cmd_fmt) {
-		if (vsnprintf(cmd, sizeof(cmd), cmd_fmt, args) >= sizeof(cmd)) {
-			errno = E2BIG;
-			perror("Error: vsnprintf");
+		if (vasprintf(&cmd, cmd_fmt, args) < 0) {
+			perror("Error: vasprintf");
 			exit(errno);
 		}
 
@@ -143,14 +150,13 @@ static char *vcmd_ret(struct command_buffer *c, const char *cmd_fmt, va_list arg
 
 _printf_(1, 2) static void cmd(const char *cmd_fmt, ...)
 {
-	char cmd[8192];
+	_cleanup_free_ char *cmd = NULL;
 	va_list args;
 	int ret;
 
 	va_start(args, cmd_fmt);
-	if (vsnprintf(cmd, sizeof(cmd), cmd_fmt, args) >= sizeof(cmd)) {
-		errno = E2BIG;
-		perror("Error: vsnprintf");
+	if (vasprintf(&cmd, cmd_fmt, args) < 0) {
+		perror("Error: vasprintf");
 		exit(errno);
 	}
 	va_end(args);
@@ -193,7 +199,7 @@ _printf_(1, 2) static void cndc(const char *cmd_fmt, ...)
 	if (!ret || !strstr(ret, "200 0")) {
 		if (ret)
 			fprintf(stderr, "Error: %s\n", ret);
-		exit(29);
+		exit(ENONET);
 	}
 }
 
@@ -224,6 +230,7 @@ static void del_if(const char *iface)
 {
 	DEFINE_CMD(c);
 	regex_t reg;
+	regmatch_t matches[2];
 	char *netid = NULL;
 	_cleanup_free_ char *regex = concat("0xc([0-9a-f]+)/0xcffff lookup ", iface, NULL);
 
@@ -231,10 +238,8 @@ static void del_if(const char *iface)
 
 	cmd("ip link del %s", iface);
 	for (char *ret = cmd_ret(&c, "ip rule show"); ret; ret = cmd_ret(&c, NULL)) {
-		regmatch_t matches[2];
-
 		if (!regexec(&reg, ret, ARRAY_SIZE(matches), matches, 0)) {
-			ret[matches[1].rm_eo] = 0;
+			ret[matches[1].rm_eo] = '\0';
 			netid = &ret[matches[1].rm_so];
 			break;
 		}
@@ -267,7 +272,7 @@ static void set_dnses(unsigned int netid, const char *dnses)
 
 	if (!len)
 		return;
-	arglist[0] = 0;
+	arglist[0] = '\0';
 
 	for (char *dns = strtok(mutable, ", \t\n"); dns; dns = strtok(NULL, ", \t\n")) {
 		if (strchr(dns, '\'') || strchr(dns, '\\'))
@@ -286,15 +291,15 @@ static void add_addr(const char *iface, const char *addr)
 		cndc("interface ipv6 %s enable", iface);
 		cmd("ip -6 addr add '%s' dev %s", addr, iface);
 	} else {
-		_cleanup_free_ char *mutable = strdup(addr);
-		char *slash = strchr(mutable, '/');
+		_cleanup_free_ char *mut_addr = strdup(addr);
+		char *slash = strchr(mut_addr, '/');
 		unsigned char mask = 32;
 
 		if (slash) {
-			*slash = 0;
+			*slash = '\0';
 			mask = atoi(slash + 1);
 		}
-		cndc("interface setcfg %s '%s' %u", iface, mutable, mask);
+		cndc("interface setcfg %s '%s' %u", iface, mut_addr, mask);
 	}
 }
 
@@ -328,17 +333,17 @@ static int get_route_mtu(const char *endpoint)
 		return -1;
 
 	if (!regexec(&regex_mtu, route, ARRAY_SIZE(matches), matches, 0)) {
-		route[matches[1].rm_eo] = 0;
+		route[matches[1].rm_eo] = '\0';
 		mtu = &route[matches[1].rm_so];
 	} else if (!regexec(&regex_dev, route, ARRAY_SIZE(matches), matches, 0)) {
-		route[matches[1].rm_eo] = 0;
+		route[matches[1].rm_eo] = '\0';
 		dev = &route[matches[1].rm_so];
 		route = cmd_ret(&c_dev, "ip -o link show dev %s", dev);
 		if (!route)
 			return -1;
 		if (regexec(&regex_mtu, route, ARRAY_SIZE(matches), matches, 0))
 			return -1;
-		route[matches[1].rm_eo] = 0;
+		route[matches[1].rm_eo] = '\0';
 		mtu = &route[matches[1].rm_so];
 	} else
 		return -1;
@@ -349,7 +354,8 @@ static void set_mtu(const char *iface, unsigned int mtu)
 {
 	DEFINE_CMD(c_endpoints);
 	regex_t regex_endpoint;
-	int endpoint_mtu;
+	regmatch_t matches[2];
+	int endpoint_mtu, next_mtu;
 
 	if (mtu) {
 		cndc("interface setmtu %s %u", iface, mtu);
@@ -363,12 +369,9 @@ static void set_mtu(const char *iface, unsigned int mtu)
 		endpoint_mtu = 1500;
 
 	for (char *endpoint = cmd_ret(&c_endpoints, "wg show %s endpoints", iface); endpoint; endpoint = cmd_ret(&c_endpoints, NULL)) {
-		regmatch_t matches[2];
-		unsigned int next_mtu;
-
 		if (regexec(&regex_endpoint, endpoint, ARRAY_SIZE(matches), matches, 0))
 			continue;
-		endpoint[matches[1].rm_eo] = 0;
+		endpoint[matches[1].rm_eo] = '\0';
 		endpoint = &endpoint[matches[1].rm_so];
 
 		next_mtu = get_route_mtu(endpoint);
@@ -390,6 +393,7 @@ static void set_routes(const char *iface, unsigned int netid)
 
 	for (char *allowedips = cmd_ret(&c, "wg show %s allowed-ips", iface); allowedips; allowedips = cmd_ret(&c, NULL)) {
 		char *start = strchr(allowedips, '\t');
+
 		if (!start)
 			continue;
 		++start;
@@ -452,7 +456,7 @@ static void cmd_up(const char *iface, const char *config, unsigned int mtu, cons
 
 	if (cmd_ret(&c, "ip link show dev %s 2>/dev/null", iface)) {
 		fprintf(stderr, "Error: %s already exists\n", iface);
-		exit(92);
+		exit(EEXIST);
 	}
 
 	cleanup_iface = xstrdup(iface);
@@ -468,7 +472,7 @@ static void cmd_up(const char *iface, const char *config, unsigned int mtu, cons
 
 	free(cleanup_iface);
 	cleanup_iface = NULL;
-	exit(0);
+	exit(EXIT_SUCCESS);
 }
 
 static void cmd_down(const char *iface)
@@ -487,29 +491,18 @@ static void cmd_down(const char *iface)
 	}
 	if (!found) {
 		fprintf(stderr, "Error: %s is not a WireGuard interface\n", iface);
-		exit(43);
+		exit(EMEDIUMTYPE);
 	}
 
 	del_if(iface);
-	exit(0);
-}
-
-static char *concat_and_free(char *orig, const char *delim, const char *new_line)
-{
-	char *ret;
-
-	if (!orig)
-		ret = xstrdup(new_line);
-	else
-		ret = concat(orig, delim, new_line, NULL);
-	free(orig);
-	return ret;
+	exit(EXIT_SUCCESS);
 }
 
 static void parse_options(char **iface, char **config, unsigned int *mtu, char **addrs, char **dnses, const char *arg)
 {
 	_cleanup_fclose_ FILE *file = NULL;
-	char filename[PATH_MAX + 1], *line = NULL;
+	_cleanup_free_ char *line = NULL;
+	_cleanup_free_ char *filename = NULL;
 	regex_t regex_iface, regex_conf;
 	regmatch_t matches[2];
 	struct stat sbuf;
@@ -522,11 +515,13 @@ static void parse_options(char **iface, char **config, unsigned int *mtu, char *
 	xregcomp(&regex_iface, "^[a-zA-Z0-9_=+.-]{1,16}$", REG_EXTENDED | REG_NOSUB);
 	xregcomp(&regex_conf, "/?([a-zA-Z0-9_=+.-]{1,16})\\.conf$", REG_EXTENDED);
 
-	filename[sizeof(filename) - 1] = 0;
-	if (!regexec(&regex_iface, arg, 0, NULL, 0))
-		snprintf(filename, sizeof(filename) - 1, "/data/misc/wireguard/%s.conf", arg);
-	else
-		strncpy(filename, arg, sizeof(filename) - 1);
+	if (!regexec(&regex_iface, arg, 0, NULL, 0)) {
+		if (asprintf(&filename, "/data/misc/wireguard/%s.conf", arg) < 0) {
+			perror("Error: asprintf");
+			exit(errno);
+		}
+	} else
+		filename = xstrdup(arg);
 
 	file = fopen(filename, "r");
 	if (!file) {
@@ -536,7 +531,7 @@ static void parse_options(char **iface, char **config, unsigned int *mtu, char *
 
 	if (regexec(&regex_conf, filename, ARRAY_SIZE(matches), matches, 0)) {
 		fprintf(stderr, "Error: The config file must be a valid interface name, followed by .conf\n");
-		exit(77);
+		exit(EINVAL);
 	}
 
 	if (fstat(fileno(file), &sbuf) < 0) {
@@ -557,21 +552,20 @@ static void parse_options(char **iface, char **config, unsigned int *mtu, char *
 			if (!isspace(line[i]))
 				clean[j++] = line[i];
 		}
-		clean[j] = 0;
-		len = strlen(clean);
+		clean[j] = '\0';
 
 		if (clean[0] == '[')
 			in_interface_section = false;
 		if (!strcasecmp(clean, "[Interface]"))
 			in_interface_section = true;
 		if (in_interface_section) {
-			if (!strncasecmp(clean, "Address=", 8) && len > 8) {
+			if (!strncasecmp(clean, "Address=", 8) && j > 8) {
 				*addrs = concat_and_free(*addrs, ",", clean + 8);
 				continue;
-			} else if (!strncasecmp(clean, "DNS=", 4) && len > 4) {
+			} else if (!strncasecmp(clean, "DNS=", 4) && j > 4) {
 				*dnses = concat_and_free(*dnses, ",", clean + 4);
 				continue;
-			} else if (!strncasecmp(clean, "MTU=", 4) && len > 4) {
+			} else if (!strncasecmp(clean, "MTU=", 4) && j > 4) {
 				*mtu = atoi(clean + 4);
 				continue;
 			}
