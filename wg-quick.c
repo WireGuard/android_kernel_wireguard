@@ -138,6 +138,7 @@ static char *vcmd_ret(struct command_buffer *c, const char *cmd_fmt, va_list arg
 			exit(errno);
 		}
 	}
+	errno = 0;
 	if (getline(&c->line, &c->len, c->stream) < 0) {
 		if (errno) {
 			perror("Error: getline");
@@ -427,7 +428,8 @@ static void cmd_usage(const char *program)
 		"\n"
 		"  CONFIG_FILE is a configuration file, whose filename is the interface name\n"
 		"  followed by `.conf'. Otherwise, INTERFACE is an interface name, with\n"
-		"  configuration found at /data/misc/wireguard/INTERFACE.conf. It is to be readable\n"
+		"  configuration found at /data/misc/wireguard/INTERFACE.conf or\n"
+		"  /data/data/com.wireguard.android/files/INTERFACE.conf. It is to be readable\n"
 		"  by wg(8)'s `setconf' sub-command, with the exception of the following additions\n"
 		"  to the [Interface] section, which are handled by %s:\n"
 		"\n"
@@ -520,13 +522,26 @@ static void parse_options(char **iface, char **config, unsigned int *mtu, char *
 			perror("Error: asprintf");
 			exit(errno);
 		}
-	} else
+		file = fopen(filename, "r");
+		if (!file) {
+			free(filename);
+			if (asprintf(&filename, "/data/data/com.wireguard.android/files/%s.conf", arg) < 0) {
+				perror("Error: asprintf");
+				exit(errno);
+			}
+			file = fopen(filename, "r");
+			if (!file) {
+				fprintf(stderr, "Error: Unable to find configuration file for `%s' in either /data/misc/wireguard/ or /data/data/com.wireguard.android/files/\n", arg);
+				exit(errno);
+			}
+		}
+	} else {
 		filename = xstrdup(arg);
-
-	file = fopen(filename, "r");
-	if (!file) {
-		fprintf(stderr, "Error: Unable to open configuration file `%s': %s\n", filename, strerror(errno));
-		exit(errno);
+		file = fopen(filename, "r");
+		if (!file) {
+			fprintf(stderr, "Error: Unable to find configuration file at `%s'\n", filename);
+			exit(errno);
+		}
 	}
 
 	if (regexec(&regex_conf, filename, ARRAY_SIZE(matches), matches, 0)) {
