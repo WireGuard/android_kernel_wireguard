@@ -15,4 +15,4 @@ fi
 cp fetch.sh "$K/scripts/fetch-latest-wireguard.sh"
 chmod +x "$K/scripts/fetch-latest-wireguard.sh"
 
-[[ $(< "$K/scripts/Kbuild.include") == *fetch-latest-wireguard.sh* ]] || echo '$(shell scripts/fetch-latest-wireguard.sh)' >> "$K/scripts/Kbuild.include"
+[[ $(< "$K/scripts/Kbuild.include") == *fetch-latest-wireguard.sh* ]] || echo '$(shell cd "$(srctree)" && ./scripts/fetch-latest-wireguard.sh)' >> "$K/scripts/Kbuild.include"
