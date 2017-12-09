@@ -183,6 +183,7 @@ _printf_(2, 3) static char *cmd_ret(struct command_buffer *c, const char *cmd_fm
 _printf_(1, 2) static void cndc(const char *cmd_fmt, ...)
 {
 	DEFINE_CMD(c);
+	int error_code;
 	char *ret;
 	va_list args;
 	_cleanup_free_ char *ndc_fmt = concat("ndc ", cmd_fmt, NULL);
@@ -197,9 +198,14 @@ _printf_(1, 2) static void cndc(const char *cmd_fmt, ...)
 	ret = vcmd_ret(&c, ndc_fmt, args);
 	va_end(args);
 
-	if (!ret || !strstr(ret, "200 0")) {
-		if (ret)
-			fprintf(stderr, "Error: %s\n", ret);
+	if (!ret) {
+		fprintf(stderr, "Error: could not call ndc\n");
+		exit(ENOSYS);
+	}
+
+	error_code = atoi(ret);
+	if (error_code >= 400 && error_code < 600) {
+		fprintf(stderr, "Error: %s\n", ret);
 		exit(ENONET);
 	}
 }
