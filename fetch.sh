@@ -4,7 +4,7 @@
 # Copyright (C) 2015-2017 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved.
 
 set -e
-WIREGUARD_VERSION=79944b183795bb69e12d612bd802b54599b9eb99
+WIREGUARD_VERSION=0.0.20171211
 LIBMNL_VERSION=1.0.4
 USER_AGENT="WireGuard-AndroidROMBuild/0.1 ($(uname -a))"
 
