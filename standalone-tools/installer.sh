@@ -47,19 +47,28 @@ echo "ui_print =             by zx2c4           =" >&$OUTFD
 echo "ui_print =         www.wireguard.com      =" >&$OUTFD
 echo "ui_print ==================================" >&$OUTFD
 
+[ -n $ARCH ] || die "Could not determine architecture"
+[ -f "$ZIP" ] || die "Could not find zip file"
+
 trap cleanup INT TERM EXIT
 
 mount_system
 
+print "Extracting files"
 rm -rf /tmp/wireguard
 mkdir -p /tmp/wireguard
-print "Extracting files"
 unzip -d /tmp/wireguard "$ZIP"
-[ -d /tmp/wireguard/arch/$ARCH ] || die "Not available for device's ABI"
+
 print "Installing WireGuard tools"
-cp /tmp/wireguard/arch/$(getprop ro.product.cpu.abi)/* /system/xbin/
-cp /tmp/wireguard/addon.d/40-wireguard.sh /system/addon.d/
-chmod 755 /system/xbin/wg /system/xbin/wg-quick /system/addon.d/40-wireguard.sh
+[ -d /tmp/wireguard/arch/$ARCH ] || die "Not available for device's ABI"
+cp -f /tmp/wireguard/arch/$ARCH/* /system/xbin/ || die "Could not copy binaries"
+chmod 755 /system/xbin/wg /system/xbin/wg-quick || die "Could not mark binaries as executable"
+
+if [ -d /system/addon.d ]; then
+	print "Installing ROM flash survial script"
+	cp -f /tmp/wireguard/addon.d/40-wireguard.sh /system/addon.d/ || die "Could not copy survival script"
+	chmod 755 /system/addon.d/40-wireguard.sh || die "Could not mark survival script as executable"
+fi
 
 mkdir -pm 700 /data/misc/wireguard
 print "Success! Be sure your kernel has the WireGuard module enabled."
