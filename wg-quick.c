@@ -223,7 +223,10 @@ static void auto_su(int argc, char *argv[])
 	memcpy(&args[3], argv, argc * sizeof(*args));
 	args[argc + 3] = NULL;
 
-	printf("[$] su -p -c wg-quick\n");
+	printf("[$] su -p -c ");
+	for (int i = 0; i < argc; ++i)
+		printf("%s%c", argv[i], i == argc - 1 ? '\n' : ' ');
+
 	execvp("su", args);
 	exit(errno);
 }
