@@ -27,7 +27,7 @@ mount_system() {
 
 	if grep -q /system /proc/mounts; then
 		print "Remounting system partition r/w"
-		mount -o rw,remount /system
+		mount -o rw,remount /system || die "Could not remount system partition r/w"
 	else
 		print "Mounting system partition"
 
