@@ -11,6 +11,15 @@ if [[ ! -e net/Kconfig ]]; then
         exit 1
 fi
 
+if ! [[ $(< Makefile) =~ VERSION[[:space:]]*=[[:space:]]*([0-9]+).*PATCHLEVEL[[:space:]]*=[[:space:]]*([0-9]+).*SUBLEVEL[[:space:]]*=[[:space:]]*([0-9]+) ]]; then
+	echo "Unable to parse kernel Makefile." >&2
+	exit 1
+fi
+if (( ((${BASH_REMATCH[1]} * 65536) + (${BASH_REMATCH[2]} * 256) + ${BASH_REMATCH[3]}) < ((3 * 65536) + (10 * 256) + 0) )); then
+	echo "WireGuard requires kernels >= 3.10. This is kernel ${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}."
+	exit 1
+fi
+
 [[ $(< net/Makefile) == *wireguard* ]] || sed -i "/^obj-\\\$(CONFIG_NETFILTER).*+=/a obj-\$(CONFIG_WIREGUARD) += wireguard/" net/Makefile
 [[ $(< net/Kconfig) == *wireguard* ]] ||  sed -i "/^if INET\$/a source \"net/wireguard/Kconfig\"" net/Kconfig
 [[ -f net/.gitignore && $(< net/.gitignore) == *wireguard* ]] || echo "wireguard/" >> net/.gitignore
