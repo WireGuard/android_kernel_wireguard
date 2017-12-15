@@ -22,6 +22,10 @@
 #include <sys/stat.h>
 #include <sys/param.h>
 
+#ifndef WG_CONFIG_SEARCH_PATHS
+#define WG_CONFIG_SEARCH_PATHS "/data/misc/wireguard /data/data/com.wireguard.android/files"
+#endif
+
 #define _printf_(x, y) __attribute__((format(printf, x, y)))
 #define _cleanup_(x) __attribute__((cleanup(x)))
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
@@ -431,23 +435,30 @@ static void set_config(const char *iface, const char *config)
 	pclose(config_writer);
 }
 
+static void print_search_paths(FILE *file, const char *prefix)
+{
+	_cleanup_free_ char *paths = strdup(WG_CONFIG_SEARCH_PATHS);
+
+	for (char *path = strtok(paths, " "); path; path = strtok(NULL, " "))
+		fprintf(file, "%s%s\n", prefix, path);
+}
+
 static void cmd_usage(const char *program)
 {
 	printf( "Usage: %s [ up | down ] [ CONFIG_FILE | INTERFACE ]\n"
 		"\n"
 		"  CONFIG_FILE is a configuration file, whose filename is the interface name\n"
 		"  followed by `.conf'. Otherwise, INTERFACE is an interface name, with\n"
-		"  configuration found at /data/misc/wireguard/INTERFACE.conf or\n"
-		"  /data/data/com.wireguard.android/files/INTERFACE.conf. It is to be readable\n"
-		"  by wg(8)'s `setconf' sub-command, with the exception of the following additions\n"
-		"  to the [Interface] section, which are handled by %s:\n"
-		"\n"
+		"  configuration found at:\n\n", program);
+	print_search_paths(stdout, "  - ");
+	printf( "\n  It is to be readable by wg(8)'s `setconf' sub-command, with the exception\n"
+		"  of the following additions to the [Interface] section, which are handled by\n"
+		"  this program:\n\n"
 		"  - Address: may be specified one or more times and contains one or more\n"
 		"    IP addresses (with an optional CIDR mask) to be set for the interface.\n"
 		"  - MTU: an optional MTU for the interface; if unspecified, auto-calculated.\n"
-		"  - DNS: an optional DNS server to use while the device is up.\n"
-		"\n"
-		"See wg-quick(8) for more info and examples.\n", program, program);
+		"  - DNS: an optional DNS server to use while the device is up.\n\n"
+		"  See wg-quick(8) for more info and examples.\n");
 }
 
 static char *cleanup_iface = NULL;
@@ -514,6 +525,7 @@ static void parse_options(char **iface, char **config, unsigned int *mtu, char *
 	_cleanup_fclose_ FILE *file = NULL;
 	_cleanup_free_ char *line = NULL;
 	_cleanup_free_ char *filename = NULL;
+	_cleanup_free_ char *paths = strdup(WG_CONFIG_SEARCH_PATHS);
 	regex_t regex_iface, regex_conf;
 	regmatch_t matches[2];
 	struct stat sbuf;
@@ -527,22 +539,20 @@ static void parse_options(char **iface, char **config, unsigned int *mtu, char *
 	xregcomp(&regex_conf, "/?([a-zA-Z0-9_=+.-]{1,16})\\.conf$", REG_EXTENDED);
 
 	if (!regexec(&regex_iface, arg, 0, NULL, 0)) {
-		if (asprintf(&filename, "/data/misc/wireguard/%s.conf", arg) < 0) {
-			perror("Error: asprintf");
-			exit(errno);
-		}
-		file = fopen(filename, "r");
-		if (!file) {
+		for (char *path = strtok(paths, " "); path; path = strtok(NULL, " ")) {
 			free(filename);
-			if (asprintf(&filename, "/data/data/com.wireguard.android/files/%s.conf", arg) < 0) {
+			if (asprintf(&filename, "%s/%s.conf", path, arg) < 0) {
 				perror("Error: asprintf");
 				exit(errno);
 			}
 			file = fopen(filename, "r");
-			if (!file) {
-				fprintf(stderr, "Error: Unable to find configuration file for `%s' in either /data/misc/wireguard/ or /data/data/com.wireguard.android/files/\n", arg);
-				exit(errno);
-			}
+			if (file)
+				break;
+		}
+		if (!file) {
+			fprintf(stderr, "Error: Unable to find configuration file for `%s' in:\n", arg);
+			print_search_paths(stderr, "- ");
+			exit(errno);
 		}
 	} else {
 		filename = xstrdup(arg);
