@@ -20,6 +20,7 @@
 #include <regex.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <sys/param.h>
 
 #ifndef WG_CONFIG_SEARCH_PATHS
@@ -168,6 +169,11 @@ _printf_(1, 2) static void cmd(const char *cmd_fmt, ...)
 
 	printf("[#] %s\n", cmd);
 	ret = system(cmd);
+
+	if (ret < 0)
+		ret = ESRCH;
+	else if (ret > 0)
+		ret = WEXITSTATUS(ret);
 
 	if (ret && !is_exiting)
 		exit(ret);
