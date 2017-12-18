@@ -35,8 +35,15 @@ If your kernel already has WireGuard, perhaps via a standalone kernel module, bu
 
 ```
 $ cd standalone-tools
-$ make -j$(nproc)
+$ make -j$(nproc) zip
 $ adb sideload wireguard-tools.zip
+```
+
+Or, if you have your phone plugged in and booted up into the normal OS and have root access, you can build and push directly with:
+
+```
+$ cd standalone-tools
+$ make push
 ```
 
 ## `wg-quick(8)` for Android

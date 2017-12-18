@@ -4,7 +4,8 @@
 
 ARCHS := $(shell ndk-build NDK_PROJECT_PATH=$(PWD)/build APP_BUILD_SCRIPT=$(PWD)/../Android.mk APP_PLATFORM=21 DUMP_NDK_KNOWN_DEVICE_ABIS 2>/dev/null)
 
-all: wireguard-tools.zip
+help:
+	@echo "Type \`make zip' to create a flashable zip, or type \`make push' to push tools to a running device using adb."
 
 clean:
 	rm -rf build wireguard-tools.zip
@@ -27,5 +28,12 @@ wireguard-tools.zip: $(foreach ARCH,$(ARCHS),build/libs/$(ARCH)/wg-quick build/l
 	$(ANDROID_HOME)/build-tools/27.0.1/zipalign -v -p 4 build/unaligned-$@ build/aligned-$@
 	$(ANDROID_HOME)/build-tools/27.0.1/apksigner sign --key build/key.pk8 --cert build/cert.pem --min-sdk-version 21 --out $@ build/aligned-$@
 
-.PHONY: clean all
+zip: wireguard-tools.zip
+
+push: $(foreach ARCH,$(ARCHS),build/libs/$(ARCH)/wg-quick build/libs/$(ARCH)/wg)
+	ARCH="$$(adb shell 'su -c "mount -o rw,remount /system" && getprop ro.product.cpu.abi')" && \
+	adb push "build/libs/$$ARCH/wg-quick" "build/libs/$$ARCH/wg" /sdcard && \
+	adb shell 'su -c "mv /sdcard/wg /sdcard/wg-quick /system/xbin/ && chmod 755 /system/xbin/wg /system/xbin/wg-quick"'
+
+.PHONY: clean zip push
 .SECONDARY:
