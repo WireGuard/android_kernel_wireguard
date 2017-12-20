@@ -17,7 +17,7 @@ if ! [[ $(< Makefile) =~ VERSION[[:space:]]*=[[:space:]]*([0-9]+).*PATCHLEVEL[[:
 fi
 if (( ((${BASH_REMATCH[1]} * 65536) + (${BASH_REMATCH[2]} * 256) + ${BASH_REMATCH[3]}) < ((3 * 65536) + (10 * 256) + 0) )); then
 	echo "WireGuard requires kernels >= 3.10. This is kernel ${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}."
-	exit 1
+	exit 77
 fi
 
 [[ $(< net/Makefile) == *wireguard* ]] || sed -i "/^obj-\\\$(CONFIG_NETFILTER).*+=/a obj-\$(CONFIG_WIREGUARD) += wireguard/" net/Makefile
@@ -30,6 +30,11 @@ chmod +x scripts/fetch-latest-wireguard.sh
 [[ $(< scripts/Kbuild.include) == *fetch-latest-wireguard.sh* ]] || echo '$(shell cd "$(srctree)" && ./scripts/fetch-latest-wireguard.sh)' >> scripts/Kbuild.include
 
 if [[ -d .git ]]; then
-	git add scripts/Kbuild.include scripts/fetch-latest-wireguard.sh net/.gitignore net/Kconfig net/Makefile
-	git commit -s -m "net/wireguard: add wireguard importer" scripts/Kbuild.include scripts/fetch-latest-wireguard.sh net/.gitignore net/Kconfig net/Makefile
+	if [[ $WG_PATCHER_GIT_IGNORE -eq 1 ]]; then
+		echo -e 'scripts/fetch-latest-wireguard.sh\nnet/.gitignore' >> .gitignore
+		git update-index --assume-unchanged .gitignore scripts/Kbuild.include net/Kconfig net/Makefile
+	else
+		git add scripts/Kbuild.include scripts/fetch-latest-wireguard.sh net/.gitignore net/Kconfig net/Makefile
+		git commit -s -m "net/wireguard: add wireguard importer" scripts/Kbuild.include scripts/fetch-latest-wireguard.sh net/.gitignore net/Kconfig net/Makefile
+	fi
 fi

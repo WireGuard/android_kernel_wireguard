@@ -1,28 +1,18 @@
 #!/bin/bash
-# SPDX-License-Identifier: GPL-2.0
-#
-# Copyright (C) 2015-2017 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved.
-
 set -e
-WIREGUARD_VERSION=0.0.20171211
-LIBMNL_VERSION=1.0.4
 USER_AGENT="WireGuard-AndroidROMBuild/0.1 ($(uname -a))"
 
-fetch_wireguard() {
-	[[ -d wireguard && -f wireguard/.version && $(< wireguard/.version) == "$WIREGUARD_VERSION" ]] && return 0
-	rm -rf wireguard
-	mkdir wireguard
-	curl -A "$USER_AGENT" -LSs "https://git.zx2c4.com/WireGuard/snapshot/WireGuard-$WIREGUARD_VERSION.tar.xz" | tar -C "wireguard" --strip-components=1 -xJf -
-	echo "$WIREGUARD_VERSION" > wireguard/.version
-}
+[[ $(( $(date +%s) - $(stat -c %Y "net/wireguard/.check" 2>/dev/null || echo 0) )) -gt 86400 ]] || exit 0
 
-fetch_libmnl() {
-	[[ -d libmnl && -f libmnl/.version && $(< libmnl/.version) == "$LIBMNL_VERSION" ]] && return 0
-	rm -rf libmnl
-	mkdir libmnl
-	curl -A "$USER_AGENT" -LSs "https://www.netfilter.org/projects/libmnl/files/libmnl-$LIBMNL_VERSION.tar.bz2" | tar -C libmnl --strip-components=1 -xjf -
-	echo "$LIBMNL_VERSION" > libmnl/.version
-}
+[[ $(curl -A "$USER_AGENT" -LSs https://git.zx2c4.com/WireGuard/refs/) =~ snapshot/WireGuard-([0-9.]+)\.tar\.xz ]]
 
-fetch_wireguard
-fetch_libmnl
+if [[ -f net/wireguard/version.h && $(< net/wireguard/version.h) == *${BASH_REMATCH[1]}* ]]; then
+	touch net/wireguard/.check
+	exit 0
+fi
+
+rm -rf net/wireguard
+mkdir -p net/wireguard
+curl -A "$USER_AGENT" -LsS "https://git.zx2c4.com/WireGuard/snapshot/WireGuard-${BASH_REMATCH[1]}.tar.xz" | tar -C "net/wireguard" -xJf - --strip-components=2 "WireGuard-${BASH_REMATCH[1]}/src"
+sed -i 's/tristate/bool/;s/default m/default y/;' net/wireguard/Kconfig
+touch net/wireguard/.check

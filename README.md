@@ -1,51 +1,26 @@
 # [WireGuard](https://www.wireguard.com/) for Android ROMs and Kernels
 
-This repository contains various ways of integrating [WireGuard](https://www.wireguard.com/) into Android systems. The result may be used with [the WireGuard Android GUI app](https://play.google.com/apps/testing/com.wireguard.android). This is currently tested on Android 7 and kernels ≥3.10.
+This repository contains various ways of integrating [WireGuard](https://www.wireguard.com/) into Android systems. The result may be used with [the WireGuard Android GUI app](https://play.google.com/apps/testing/com.wireguard.android). This is currently tested on Android 6, 7, and 8 and kernels ≥3.10.
 
-## Integrating into ROMs Directly
+Choose between **Method A** and **Method B**, below. Do not choose both methods at the same time.
 
-This is the preferred approach. It is embedded into your ROM via a simple `local_manifest.xml`, so that WireGuard is built into the kernel and userland of an Android ROM.
+## Method A: Adding to Kernel Trees
 
-To use, add the following local manifest to your project, or include the `<remote>` and `<project>` lines in an existing manifest:
+If you maintain your own kernel, you may easily patch your kernel tree to support WireGuard with the following command:
 
 ```
-<?xml version="1.0" encoding="UTF-8"?>
-<manifest>
+$ ./patch-kernel.sh path/to/kerneltree
+```
+
+This will patch your kernel and create a commit for you.
+
+## Method B: Integrating into ROMs
+
+If you do not maintain your own kernel, but rather maintain a `local_manifest.xml` file, and would like to add WireGuard to your ROM, you can simply add these two lines to your `local_manifest.xml`:
+
+```
   <remote name="zx2c4" fetch="https://git.zx2c4.com/" />
   <project remote="zx2c4" name="android_kernel_wireguard" path="kernel/wireguard" revision="master" sync-s="true" />
-</manifest>
 ```
 
-After that calls to `repo sync` and `mka bacon` will do the right thing, giving you a WireGuard-enabled ROM.
-
-## Standalone Kernel Built-in Module
-
-If you do not wish to run a custom ROM, but would still like to build a kernel with WireGuard, you may patch WireGuard into your kernel using the following script:
-
-```
-$ cd standalone-kernel
-$ ./patch-kernel.sh path/to/kernel
-```
-
-After this, WireGuard will be included as part of the ordinary kernel build.
-
-## Standalone Tools
-
-If your kernel already has WireGuard, perhaps via a standalone kernel module, but you need the tools for userland, you may build a flashable zip file, installable via recovery, with:
-
-```
-$ cd standalone-tools
-$ make -j$(nproc) zip
-$ adb sideload wireguard-tools.zip
-```
-
-Or, if you have your phone plugged in and booted up into the normal OS and have root access, you can build and push directly with:
-
-```
-$ cd standalone-tools
-$ make push
-```
-
-## `wg-quick(8)` for Android
-
-All of the above approaches include [`wg-quick(8)`](https://git.zx2c4.com/WireGuard/about/src/tools/wg-quick.8) for Android, which works via calls to Android's `ndc` command. Compared to the ordinary wg-quick, this one does not support `SaveConfig` and `{Pre,Post}{Up,Down}`. Put your configuration files into `/data/misc/wireguard/`. After that, the normal `wg-quick up|down` commands will work as usual. This is used automatically via the [the WireGuard Android GUI app](https://play.google.com/apps/testing/com.wireguard.android).
+Then, run `repo sync`. The kernel used by your ROM will automatically gain WireGuard support.
