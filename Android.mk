@@ -6,7 +6,7 @@ WIREGUARD_PATH := $(call my-dir)
 
 TARGET_KERNEL_BINARIES: patch-wireguard
 patch-wireguard:
-	@WG_PATCHER_GIT_IGNORE=1 $(WIREGUARD_PATH)/patch-kernel.sh "$(TARGET_KERNEL_SOURCE)"; \
+	@$(WIREGUARD_PATH)/patch-kernel.sh "$(TARGET_KERNEL_SOURCE)"; \
 	ret=$$?; [ $$ret -eq 0 ] && exit 0; [ $$ret -ne 77 ] && exit $$ret; \
 	echo -e "" \
 		"\e[1;37;41m=================================================\e[0m\n" \

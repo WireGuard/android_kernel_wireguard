@@ -29,12 +29,8 @@ chmod +x scripts/fetch-latest-wireguard.sh
 
 [[ $(< scripts/Kbuild.include) == *fetch-latest-wireguard.sh* ]] || echo '$(shell cd "$(srctree)" && ./scripts/fetch-latest-wireguard.sh)' >> scripts/Kbuild.include
 
-if [[ -d .git ]]; then
-	if [[ $WG_PATCHER_GIT_IGNORE -eq 1 ]]; then
-		echo -e 'scripts/fetch-latest-wireguard.sh\nnet/.gitignore' >> .gitignore
-		git update-index --assume-unchanged .gitignore scripts/Kbuild.include net/Kconfig net/Makefile
-	else
-		git add scripts/Kbuild.include scripts/fetch-latest-wireguard.sh net/.gitignore net/Kconfig net/Makefile
-		git commit -s -m "net/wireguard: add wireguard importer" scripts/Kbuild.include scripts/fetch-latest-wireguard.sh net/.gitignore net/Kconfig net/Makefile
-	fi
+MODIFIED_FILES=( scripts/Kbuild.include scripts/fetch-latest-wireguard.sh net/.gitignore net/Kconfig net/Makefile )
+if [[ -d .git && -n $(git status --porcelain "${MODIFIED_FILES[@]}") ]]; then
+	git add "${MODIFIED_FILES[@]}"
+	git commit -s -m "net/wireguard: add wireguard importer" "${MODIFIED_FILES[@]}"
 fi
