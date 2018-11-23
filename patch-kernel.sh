@@ -7,8 +7,8 @@ if ! cd "$1"; then
 fi
 
 if [[ ! -e net/Kconfig ]]; then
-        echo "You must specify the location of kernel sources as the first argument." >&2
-        exit 1
+	echo "You must specify the location of kernel sources as the first argument." >&2
+	exit 1
 fi
 
 if ! [[ $(< Makefile) =~ VERSION[[:space:]]*=[[:space:]]*([0-9]+).*PATCHLEVEL[[:space:]]*=[[:space:]]*([0-9]+).*SUBLEVEL[[:space:]]*=[[:space:]]*([0-9]+) ]]; then
