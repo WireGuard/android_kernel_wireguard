@@ -32,5 +32,5 @@ chmod +x scripts/fetch-latest-wireguard.sh
 MODIFIED_FILES=( scripts/Kbuild.include scripts/fetch-latest-wireguard.sh net/.gitignore net/Kconfig net/Makefile )
 if [[ -d .git && -n $(git status --porcelain "${MODIFIED_FILES[@]}") ]]; then
 	git add "${MODIFIED_FILES[@]}"
-	git commit -s -m "net/wireguard: add wireguard importer" "${MODIFIED_FILES[@]}"
+	git commit -S -m "net/wireguard: add wireguard importer" "${MODIFIED_FILES[@]}"
 fi
